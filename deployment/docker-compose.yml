@@ -1,0 +1,139 @@
+# UdyamSetu production stack: frontend (nginx), backend (Spring Boot, prod profile), MySQL 8.4.
+#
+# Exposure:
+#   - frontend  -> 127.0.0.1:8081 only. Host Nginx terminates TLS and forwards to this port.
+#   - backend   -> no published ports. Reachable only from frontend, over the private "app" network.
+#   - mysql     -> no published ports. Reachable only from backend, over the "db" network (internal: no route out).
+#
+# Secrets: never in this file or in images. Supplied at run time from env/backend.env and env/mysql.env
+# (gitignored). See env/production.env.example for the variables.
+#
+# Start-up order: the schema is applied MANUALLY before the first start (db/baseline/000_fresh_schema.sql),
+# then the application account is created (db/setup/create_app_user.sql.example). Compose does not run SQL.
+#
+# Host Nginx must overwrite X-Forwarded-For with $remote_addr and set X-Forwarded-Proto to https. See README.md.
+
+name: udyamsetu
+
+# Shared log rotation for every service (json-file driver, bounded size).
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  mysql:
+    image: mysql:8.4@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
+    restart: unless-stopped
+    env_file:
+      - ./env/mysql.env                  # MYSQL_ROOT_PASSWORD only
+    environment:
+      MYSQL_DATABASE: udyamsetu_prod     # created empty; the baseline creates the tables
+      # Official image: root is created as root@<MYSQL_ROOT_HOST> (default '%'). 'localhost' restricts root to the
+      # local socket inside the container, so root cannot log in over the network at all.
+      MYSQL_ROOT_HOST: localhost
+    volumes:
+      - mysql-data:/var/lib/mysql        # persistent named storage
+    networks:
+      - db
+    # Hardening. The official entrypoint runs as root briefly to fix datadir ownership (chown) and then switches to
+    # the mysql user with gosu (setuid/setgid). Only those four capabilities are added back.
+    # The root filesystem is left writable: the entrypoint and mysqld write under the datadir and the socket
+    # directory, and a read-only setup has not been verified.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 500
+    logging: *json-logging
+    healthcheck:
+      # ping needs no credentials; it reports the server is alive, not that a login succeeds.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    # No "ports:" by design.
+
+  backend:
+    build:
+      context: ../UdyamSetu-Backend
+      dockerfile: Dockerfile
+    image: udyamsetu-backend:prod
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ./env/backend.env                # DB_USERNAME, DB_PASSWORD, SMTP and owner settings
+    environment:
+      # sslMode=REQUIRED: the connection must use TLS. It does NOT verify the server certificate
+      # (that would need VERIFY_CA or VERIFY_IDENTITY plus a CA file in the image). See README.md.
+      DB_URL: jdbc:mysql://mysql:3306/udyamsetu_prod?sslMode=REQUIRED
+    networks:
+      app:                               # reachable from frontend; also has outbound access for SMTP
+      db:                                # reachable to MySQL
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m,mode=1777   # Tomcat and the JVM write their temporary files here
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 300
+    logging: *json-logging
+    healthcheck:
+      # TCP check only: proves the port accepts connections. No HTTP request is made, so no session is created.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    # No "ports:" by design.
+
+  frontend:
+    build:
+      context: ../UdyamSetu              # frontend source repository, read-only use
+      dockerfile: ../UdyamSetu-Deployment/frontend/Dockerfile
+      additional_contexts:
+        deploy: ./frontend               # this folder, for nginx.conf only
+    image: udyamsetu-frontend:prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8081:8080"            # the only published port, bound to localhost
+    networks:
+      - app
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=16m,mode=1777   # nginx pid file and proxy/body temp files (see frontend/nginx.conf)
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    logging: *json-logging
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  app:
+    driver: bridge
+  db:
+    driver: bridge
+    internal: true                       # no route to the outside world
+
+volumes:
+  mysql-data:

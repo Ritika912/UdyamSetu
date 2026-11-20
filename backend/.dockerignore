@@ -1,0 +1,34 @@
+# Keep the build context small and keep local or secret files out of the image.
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+
+# Build output and tests (tests are not run in the image build)
+target
+**/target
+src/test
+
+# Local configuration and credentials (config/local.yaml is gitignored and must never be baked in)
+config
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.bak
+
+# Database scripts and local notes: not needed at runtime
+db
+*.sql
+SESSION_HANDOVER.md
+AGENTS.md
+Claude.md
+CLAUDE.md
+HELP.md
+
+# Container files are supplied by the deployment project
+Dockerfile
+.dockerignore
+docker-compose*.yml

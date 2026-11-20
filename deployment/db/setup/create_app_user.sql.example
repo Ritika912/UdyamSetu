@@ -1,0 +1,19 @@
+-- =====================================================================
+-- Dedicated application database account (EXAMPLE, placeholders only)
+-- =====================================================================
+-- Copy to a private file outside the repository, replace the placeholders, and run it once as an administrator
+-- AFTER the baseline. The application account gets DML only: no CREATE, ALTER, DROP or GRANT.
+-- Hibernate ddl-auto=validate needs only metadata reads, which every account can make on its own tables.
+--
+-- Host '%' is deliberate. The only container on the internal "db" network is the backend, so no other host
+-- can reach MySQL. The account is not given a fixed container IP.
+--
+-- REQUIRE SSL: the server refuses any non-TLS login for this account. The backend connects with
+-- sslMode=REQUIRED (docker-compose.yml). That encrypts the connection but does not verify the server certificate.
+--
+-- Never commit a file with a real password.
+-- =====================================================================
+
+CREATE USER 'udyamsetu_app'@'%' IDENTIFIED BY 'REPLACE_WITH_STRONG_PASSWORD' REQUIRE SSL;
+GRANT SELECT, INSERT, UPDATE, DELETE ON udyamsetu_prod.* TO 'udyamsetu_app'@'%';
+FLUSH PRIVILEGES;

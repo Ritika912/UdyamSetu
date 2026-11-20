@@ -1,0 +1,23 @@
+﻿/dist/
+/node_modules/
+/public/
+/src/
+/CLAUDE.md
+/eslint.config.js
+/index.html
+/package.json
+/package-lock.json
+/vite.config.js
+
+# Secrets
+**/*.env
+!**/*.env.example
+**/application-prod.yaml
+
+# Build and IDE files
+**/target/
+**/.idea/
+**/.vscode/
+**/*.log
+
+/backend/config/local.yaml

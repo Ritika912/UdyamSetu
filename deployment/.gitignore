@@ -1,0 +1,29 @@
+# Real environment files hold secrets. Only env/production.env.example is committed.
+env/mysql.env
+env/backend.env
+
+# Local SQL that contains real passwords (the example is committed, a filled copy is not).
+db/setup/*.sql
+!db/setup/*.sql.example
+
+# Environment secrets
+env/*.env
+!env/*.env.example
+
+# Build files
+target/
+node_modules/
+dist/
+.angular/
+.vite/
+
+# IDE files
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,46 @@
+
+spring:
+  application:
+    name: udyamsetu-backend
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  security:
+    # The exact origin the React application is served from. Development: the Vite dev server (default port
+    # 5173, proxying /api). Production overrides this from APP_ALLOWED_ORIGIN, with no default.
+    allowed-origin: http://localhost:5173
+
+server:
+  servlet:
+    session:
+      # Server-side HTTP session with an 8-hour idle timeout (owner authentication).
+      timeout: 8h
+      cookie:
+        http-only: true
+        same-site: lax
+  error:
+    # The public error response never includes stack traces, exception types or messages.
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+---
+# Local-only credentials (database and owner) from config/local.yaml. Gitignored. See config/local.yaml.example.
+# This document is active for every profile EXCEPT prod, so production can never read the local file, even when it
+# exists in the working directory.
+spring:
+  config:
+    activate:
+      on-profile: "!prod"
+    import: optional:file:./config/local.yaml

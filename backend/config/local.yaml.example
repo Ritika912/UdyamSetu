@@ -1,0 +1,51 @@
+# Local configuration template for UdyamSetu-Backend.
+#
+# SETUP (one time, on each development machine):
+#   1. Copy this file to config/local.yaml in the project root.
+#        Windows:        copy config\local.yaml.example config\local.yaml
+#        macOS / Linux:  cp config/local.yaml.example config/local.yaml
+#   2. Replace every REPLACE_WITH_... value with your real local value.
+#   3. Never commit config/local.yaml. It is listed in .gitignore.
+#   4. Never paste real credentials into this example file or into chat.
+#
+# application.yaml imports config/local.yaml relative to the working directory,
+# so run the application from the project root (the default for Maven and IntelliJ).
+#
+# If config/local.yaml is missing, the application fails at startup with a
+# datasource configuration error. This is intentional: the local database
+# credentials must not fall back to anything committed to source control.
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/udyamsetu_db
+    username: REPLACE_WITH_LOCAL_MYSQL_USERNAME
+    password: REPLACE_WITH_LOCAL_MYSQL_PASSWORD
+
+  # Contact form email (POST /api/contact). Optional for local development: without these values the
+  # contact endpoint responds 503 and logs that mail is not configured. Use a test mailbox while developing.
+  mail:
+    host: smtpout.secureserver.net
+    port: 465
+    protocol: smtp
+    username: REPLACE_WITH_SUPPORT_MAILBOX_ADDRESS
+    password: REPLACE_WITH_SUPPORT_MAILBOX_PASSWORD
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+            checkserveridentity: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+app:
+  security:
+    owner:
+      # The single owner account used to sign in to the application.
+      # Not read by the application yet; required once authentication is implemented.
+      # password-hash must be a BCrypt hash (it starts with $2a$, $2b$ or $2y$).
+      # Never store the plain password in this file.
+      username: REPLACE_WITH_OWNER_USERNAME
+      password-hash: REPLACE_WITH_BCRYPT_HASH

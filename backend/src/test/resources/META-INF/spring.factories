@@ -1,0 +1,3 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.example.udyamsetubackend.config.TestDatabaseEnvironmentPostProcessor,\
+com.example.udyamsetubackend.config.TestOwnerEnvironmentPostProcessor
